@@ -7,7 +7,6 @@ import { GoogleGenAI } from "https://cdn.jsdelivr.net/npm/@google/genai@1.21.0/+
 import { createAudioElementFromBase64, enhanceApiError } from "./utilities.js";
 import { getFromStorage, setInStorage } from "./chorme-storage.js";
 // API Configuration
-// const API_KEY = "AIzaSyBA7hXWYIGhdy0OaZSndG5RB84qyhZIiNs";
 const TTS_MODEL = "gemini-2.5-flash-preview-tts";
 const STT_MODEL = "gemini-2.5-flash";
 
@@ -21,8 +20,6 @@ export async function textToSpeech(text) {
   if (!text || typeof text !== "string") {
     throw new Error("Text parameter must be a non-empty string");
   }
-  const key = await getFromStorage("apiKey");
-  console.log("Using API Key:", key);
 
   try {
     const genai = new GoogleGenAI({
@@ -43,7 +40,9 @@ export async function textToSpeech(text) {
         responseModalities: ["AUDIO"],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: "Kore" },
+            prebuiltVoiceConfig: {
+              voiceName: (await getFromStorage("voiceName")) || "Kore",
+            },
           },
         },
       },
