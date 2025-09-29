@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Interviewer Extension</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <img src="../icons/icon48.png" alt="Extension Icon" class="logo" />
+        <h1>Your AI Interviewer</h1>
+        <button
+          class="theme-toggle"
+          id="theme-toggle"
+          title="Toggle theme"
+        ></button>
+      </header>
+
+      <main>
+        <div class="status-section">
+          <p id="status-text">Extension is ready!</p>
+          <div class="status-indicator" id="status-indicator"></div>
+        </div>
+
+        <div class="controls">
+          <button id="start-btn" class="btn btn-primary">
+            Start Interview
+          </button>
+          <button id="stop-btn" class="btn btn-secondary" disabled>
+            Stop Interview
+          </button>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-grid">
+            <div class="setting-item">
+              <label for="language-select">Language</label>
+              <select id="language-select" class="setting-select">
+                <option value="">Loading languages...</option>
+              </select>
+            </div>
+
+            <div class="setting-item">
+              <label for="voice-select">Voice</label>
+              <div class="voice-controls">
+                <select id="voice-select" class="setting-select">
+                  <option value="">Loading voices...</option>
+                </select>
+                <button id="test-voice-btn" class="btn-test" title="Test Voice">
+                  🔊
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gemini AI Settings Section -->
+        <div class="gemini-section">
+          <div class="section-header">
+            <h3>🤖 AI Assistant</h3>
+            <span class="gemini-status" id="gemini-status">Not configured</span>
+          </div>
+
+          <div class="gemini-config" id="gemini-config">
+            <div class="setting-item">
+              <label for="gemini-api-key">Google AI API Key</label>
+              <div class="api-key-input">
+                <input
+                  type="text"
+                  id="gemini-api-key"
+                  placeholder="AIza..."
+                  class="api-key-field"
+                />
+                <button id="toggle-api-key" class="btn-icon" title="Show/Hide">
+                  👁
+                </button>
+              </div>
+            </div>
+
+            <div class="gemini-actions">
+              <button id="test-gemini-btn" class="btn btn-small" disabled>
+                Test Settings
+              </button>
+            </div>
+          </div>
+
+          <div class="gemini-chat" id="gemini-chat" style="display: none">
+            <div class="chat-history" id="chat-history">
+              <!-- Chat messages will appear here -->
+            </div>
+            <div class="chat-input-container">
+              <input
+                type="text"
+                id="chat-input"
+                placeholder="Ask AI for interview feedback..."
+                class="chat-input"
+              />
+              <button id="send-chat-btn" class="btn-icon">📤</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="script.js"></script>
+  </body>
+</html>

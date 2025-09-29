@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "AI Interviewer Extension",
+  "version": "1.0.0",
+  "description": "AI-powered interview assistant for analyzing user interactions",
+
+  "permissions": ["activeTab", "storage", "tabs"],
+
+  "host_permissions": ["<all_urls>"],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://cdn.jsdelivr.net https://generativelanguage.googleapis.com;"
+  },
+
+  "background": {
+    "type": "module",
+    "service_worker": "background/background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://leetcode.com/problems/*"],
+      "js": ["content/content.js"],
+      "run_at": "document_end"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "AI Interviewer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
