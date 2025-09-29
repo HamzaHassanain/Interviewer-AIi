@@ -1,4 +1,15 @@
 /**
+ * UI Controller Module
+ * Manages the recording button interface and user interactions
+ *
+ * Features:
+ * - Floating recording button with state management
+ * - Visual feedback for recording states
+ * - Text display for transcriptions and AI responses
+ * - Error handling and user notifications
+ */
+
+/**
  * Creates the floating recording button interface
  */
 function createRecordingButton() {
@@ -10,14 +21,14 @@ function createRecordingButton() {
   buttonContainer.id = "ai-interviewer-recorder";
   buttonContainer.style.cssText = `
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 15px;
+    right: 15px;
     z-index: 10000;
     background: white;
-    border-radius: 50px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 8px;
-    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 2px;
+    border: 1px solid #dee2e6;
     transition: all 0.3s ease;
   `;
 
@@ -25,20 +36,22 @@ function createRecordingButton() {
   recordingButton = document.createElement("button");
   recordingButton.id = "ai-interviewer-record-btn";
   recordingButton.style.cssText = `
-    background: #4CAF50;
+    background: linear-gradient(135deg, #4285f4 0%, #7c4dff 100%);
     border: none;
-    border-radius: 50px;
+    border-radius: 6px;
     color: white;
-    padding: 12px 20px;
-    font-size: 14px;
+    padding: 8px 12px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    min-width: 120px;
+    min-width: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
   `;
 
   // Set initial state
@@ -65,6 +78,7 @@ function removeRecordingButton() {
 
 /**
  * Updates the button appearance based on current state
+ * @param {RecordingState} state - The new state to display
  */
 function updateButtonState(state) {
   if (!recordingButton) return;
@@ -74,55 +88,68 @@ function updateButtonState(state) {
   switch (state) {
     case RecordingState.READY:
       recordingButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C13.1 2 14 2.9 14 4V12C14 13.1 13.1 14 12 14S10 13.1 10 12V4C10 2.9 10.9 2 12 2M19 10V12C19 15.3 16.3 18 13 18V20H11V18C7.7 18 5 15.3 5 12V10H7V12C7 14.2 8.8 16 11 16H13C15.2 16 17 14.2 17 12V10H19Z"/>
         </svg>
-        Ready to Record
+        Record
       `;
-      recordingButton.style.background = "#4CAF50";
+      recordingButton.style.background =
+        "linear-gradient(135deg, #34a853 0%, #4caf50 100%)";
       recordingButton.style.cursor = "pointer";
+      recordingButton.style.transform = "translateY(0)";
       recordingButton.disabled = false;
       break;
 
     case RecordingState.RECORDING:
       recordingButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="12" cy="12" r="10" fill="#ff4444"/>
           <circle cx="12" cy="12" r="6" fill="white"/>
         </svg>
-        Recording...
+        Recording
       `;
-      recordingButton.style.background = "#f44336";
+      recordingButton.style.background =
+        "linear-gradient(135deg, #ea4335 0%, #f44336 100%)";
       recordingButton.style.cursor = "pointer";
+      recordingButton.style.transform = "translateY(0)";
       recordingButton.disabled = false;
       break;
 
     case RecordingState.PROCESSING:
       recordingButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="animate-spin">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="animate-spin">
           <path d="M12,4V2C17.5,2.5 22,6.5 22,12C22,17.5 17.5,21.5 12,22V20C16.4,19.5 20,16.1 20,12C20,7.9 16.4,4.5 12,4Z"/>
         </svg>
-        Processing...
+        Processing
       `;
-      recordingButton.style.background = "#FF9800";
+      recordingButton.style.background =
+        "linear-gradient(135deg, #fbbc04 0%, #ff9800 100%)";
       recordingButton.style.cursor = "not-allowed";
+      recordingButton.style.transform = "none";
+      recordingButton.disabled = true;
+      break;
+
+    case RecordingState.AI_SPEAKING:
+      recordingButton.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="animate-pulse">
+          <path d="M3,9V15H7L12,20V4L7,9H3M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23Z"/>
+        </svg>
+        AI Speaking
+      `;
+      recordingButton.style.background =
+        "linear-gradient(135deg, #9c27b0 0%, #e91e63 100%)";
+      recordingButton.style.cursor = "not-allowed";
+      recordingButton.style.transform = "none";
       recordingButton.disabled = true;
       break;
   }
 
-  // Add spinning animation for processing state
-  if (state === RecordingState.PROCESSING) {
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      .animate-spin {
-        animation: spin 1s linear infinite;
-      }
-    `;
-    document.head.appendChild(style);
+  // Add animations for processing and AI speaking states
+  if (
+    state === RecordingState.PROCESSING ||
+    state === RecordingState.AI_SPEAKING
+  ) {
+    ensureThemeStyles();
   }
 }
 
@@ -130,8 +157,12 @@ function updateButtonState(state) {
  * Handles recording button clicks
  */
 async function handleRecordingClick() {
-  if (currentState === RecordingState.PROCESSING) {
-    return; // Ignore clicks when processing
+  // Ignore clicks when processing or AI is speaking
+  if (
+    currentState === RecordingState.PROCESSING ||
+    currentState === RecordingState.AI_SPEAKING
+  ) {
+    return;
   }
 
   if (currentState === RecordingState.READY) {
@@ -142,168 +173,76 @@ async function handleRecordingClick() {
 }
 
 /**
- * Requests microphone permission from the user
+ * Displays text with speaker indication (user or AI)
+ * @param {string} text - The text to display
+ * @param {string} speaker - Either 'user' or 'ai' to indicate the speaker
  */
-async function requestMicrophonePermission() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((track) => track.stop()); // Stop immediately, we just wanted permission
-    return true;
-  } catch (error) {
-    console.error("Microphone permission denied:", error);
-    showError(
-      "Microphone access is required for voice recording. Please allow microphone access and try again."
-    );
-    throw new Error("Microphone permission required");
-  }
-}
+function showTranscribedText(text, speaker = "user") {
+  // Ensure theme styles are available
+  ensureThemeStyles();
 
-/**
- * Starts audio recording
- */
-async function startRecording() {
-  try {
-    updateButtonState(RecordingState.RECORDING);
+  // Remove any existing text notifications
+  const existingNotifications = document.querySelectorAll(
+    "[data-ai-interviewer-notification]"
+  );
+  existingNotifications.forEach((notification) => notification.remove());
 
-    // Get audio stream
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        sampleRate: 44100,
-      },
-    });
-
-    // Create MediaRecorder
-    mediaRecorder = new MediaRecorder(stream, {
-      mimeType: "audio/webm;codecs=opus",
-    });
-
-    audioChunks = [];
-
-    // Handle data available
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunks.push(event.data);
-      }
-    };
-
-    // Handle recording stop
-    mediaRecorder.onstop = async () => {
-      // Stop all tracks to release microphone
-      stream.getTracks().forEach((track) => track.stop());
-
-      // Process the recorded audio
-      await processRecordedAudio();
-    };
-
-    // Start recording
-    mediaRecorder.start(1000); // Collect data every 1 second
-  } catch (error) {
-    console.error("Failed to start recording:", error);
-    updateButtonState(RecordingState.READY);
-    showError("Failed to start recording: " + error.message);
-  }
-}
-
-/**
- * Stops audio recording
- */
-async function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state === "recording") {
-    updateButtonState(RecordingState.PROCESSING);
-    mediaRecorder.stop();
-    // manually stop all the tracks to release the microphone
-  }
-}
-
-/**
- * Displays the transcribed text to the user
- */
-function showTranscribedText(text) {
-  // Create a temporary notification showing the transcribed text
+  // Create the notification element
   const notification = document.createElement("div");
-  notification.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    max-width: 300px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 10001;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-    line-height: 1.4;
-    color: #333;
-  `;
+  notification.setAttribute("data-ai-interviewer-notification", "true");
+  notification.className = "ai-notification";
+
+  const isAI = speaker === "ai";
+  const themeClass = isAI ? "ai-response" : "user-transcription";
+  const speakerLabel = isAI ? "🤖 AI Interviewer" : "🎯 You";
+  const badgeText = isAI ? "RESPONSE" : "TRANSCRIBED";
+
+  notification.classList.add(themeClass);
 
   notification.innerHTML = `
-    <div style="font-weight: bold; color: #2196F3; margin-bottom: 8px;">
-      🎯 Transcribed Text:
+    <div class="notification-header">
+      <span class="speaker-label">${speakerLabel}</span>
+      <span class="notification-badge">${badgeText}</span>
     </div>
-    <div style="background: #f5f5f5; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+    <div class="notification-content">
       ${text}
     </div>
-    <button onclick="this.parentElement.remove()" style="
-      background: #2196F3; 
-      color: white; 
-      border: none; 
-      padding: 6px 12px; 
-      border-radius: 4px; 
-      font-size: 12px; 
-      cursor: pointer;
-    ">
+    <button class="notification-dismiss" onclick="this.parentElement.remove()">
       Dismiss
     </button>
   `;
 
   document.body.appendChild(notification);
 
-  // Auto-remove after 10 seconds
+  // Auto-remove after appropriate time (longer for AI responses)
+  const autoRemoveTime = isAI ? 15000 : 10000;
   setTimeout(() => {
     if (notification.parentElement) {
-      notification.remove();
+      notification.style.animation = "slideOut 0.3s ease-in forwards";
+      setTimeout(() => notification.remove(), 300);
     }
-  }, 10000);
+  }, autoRemoveTime);
 }
 
 /**
  * Shows an error message to the user
+ * @param {string} message - The error message to display
  */
 function showError(message) {
+  ensureThemeStyles();
+
   const errorDiv = document.createElement("div");
-  errorDiv.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    max-width: 300px;
-    background: #ffebee;
-    border: 1px solid #f44336;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 10001;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-    color: #c62828;
-  `;
+  errorDiv.className = "ai-notification error";
 
   errorDiv.innerHTML = `
-    <div style="font-weight: bold; margin-bottom: 8px;">⚠️ Error:</div>
-    <div>${message}</div>
-    <button onclick="this.parentElement.remove()" style="
-      background: #f44336; 
-      color: white; 
-      border: none; 
-      padding: 6px 12px; 
-      border-radius: 4px; 
-      font-size: 12px; 
-      cursor: pointer; 
-      margin-top: 8px;
-    ">
+    <div class="notification-header">
+      <span class="speaker-label">⚠️ Error</span>
+      <span class="notification-badge">SYSTEM</span>
+    </div>
+    <div class="notification-content">
+      ${message}
+    </div>
+    <button class="notification-dismiss" onclick="this.parentElement.remove()">
       Dismiss
     </button>
   `;
@@ -313,58 +252,198 @@ function showError(message) {
   // Auto-remove after 8 seconds
   setTimeout(() => {
     if (errorDiv.parentElement) {
-      errorDiv.remove();
+      errorDiv.style.animation = "slideOut 0.3s ease-in forwards";
+      setTimeout(() => errorDiv.remove(), 300);
     }
   }, 8000);
 }
 
 /**
- * Processes the recorded audio and sends it to AI for transcription
+ * Shows a success message to the user
+ * @param {string} message - The success message to display
  */
-async function processRecordedAudio() {
-  try {
-    if (audioChunks.length === 0) {
-      throw new Error("No audio data recorded");
+function showSuccess(message) {
+  ensureThemeStyles();
+
+  const successDiv = document.createElement("div");
+  successDiv.className = "ai-notification success";
+
+  successDiv.innerHTML = `
+    <div class="notification-header">
+      <span class="speaker-label">✅ Success</span>
+      <span class="notification-badge">SYSTEM</span>
+    </div>
+    <div class="notification-content">
+      ${message}
+    </div>
+    <button class="notification-dismiss" onclick="this.parentElement.remove()">
+      Dismiss
+    </button>
+  `;
+
+  document.body.appendChild(successDiv);
+
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (successDiv.parentElement) {
+      successDiv.style.animation = "slideOut 0.3s ease-in forwards";
+      setTimeout(() => successDiv.remove(), 300);
     }
+  }, 5000);
+}
 
-    // Create audio blob from chunks
-    const audioBlob = new Blob(audioChunks, { type: "audio/webm;codecs=opus" });
+/**
+ * Ensures basic styles and animations are available in the document
+ */
+function ensureThemeStyles() {
+  if (!document.getElementById("ai-interviewer-styles")) {
+    const style = document.createElement("style");
+    style.id = "ai-interviewer-styles";
+    style.textContent = `
+      .ai-notification {
+        position: fixed;
+        top: 60px;
+        right: 15px;
+        max-width: 280px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        z-index: 10001;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 12px;
+        color: #333;
+        animation: slideIn 0.3s ease-out;
+      }
 
-    if (audioBlob.size === 0) {
-      throw new Error("Recorded audio is empty");
-    }
+      .ai-notification.user-transcription {
+        border-color: #4285f4;
+        background: #f0f8ff;
+      }
 
-    // Convert to base64 for transmission
-    const audioBase64 = await blobToBase64(audioBlob);
+      .ai-notification.ai-response {
+        border-color: #4CAF50;
+        background: #e8f5e8;
+      }
 
-    // Send to background script for AI processing
-    const response = await chrome.runtime.sendMessage({
-      action: "speechToText",
-      audioBlob: audioBase64,
-      mimeType: audioBlob.type,
-    });
+      .ai-notification.error {
+        border-color: #f44336;
+        background: #ffebee;
+        z-index: 10002;
+      }
 
-    // Handle response
-    if (!response) {
-      throw new Error("No response received from background script");
-    }
+      .ai-notification.success {
+        border-color: #4CAF50;
+        background: #e8f5e8;
+      }
 
-    if (response.status === "Error") {
-      throw new Error(response.error);
-    }
+      .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-weight: bold;
+        font-size: 11px;
+      }
 
-    if (response.status !== "success" || !response.text) {
-      throw new Error("Invalid response from AI service");
-    }
+      .notification-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.1);
+      }
 
-    // Show the transcribed text
-    showTranscribedText(response.text);
-  } catch (error) {
-    console.error("Failed to process recorded audio:", error);
-    showError("Failed to process recording: " + error.message);
-  } finally {
-    // Reset to ready state
-    updateButtonState(RecordingState.READY);
-    audioChunks = [];
+      .user-transcription .speaker-label { color: #4285f4; }
+      .ai-response .speaker-label { color: #4CAF50; }
+      .error .speaker-label { color: #f44336; }
+      .success .speaker-label { color: #4CAF50; }
+
+      .notification-content {
+        background: white;
+        padding: 8px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        border-left: 3px solid #e0e0e0;
+        font-size: 12px;
+      }
+
+      .user-transcription .notification-content { border-left-color: #4285f4; }
+      .ai-response .notification-content { border-left-color: #4CAF50; }
+      .error .notification-content { border-left-color: #f44336; }
+      .success .notification-content { border-left-color: #4CAF50; }
+
+      .notification-dismiss {
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+        width: 100%;
+      }
+
+      .notification-dismiss:hover {
+        opacity: 0.8;
+      }
+
+      .error .notification-dismiss { background: #f44336; }
+      .success .notification-dismiss { background: #4CAF50; }
+
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      .animate-spin { animation: spin 1s linear infinite; }
+      .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+
+      /* Recording Button Styles */
+      #ai-interviewer-record-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+      }
+
+      #ai-interviewer-record-btn:hover::before {
+        left: 100%;
+      }
+
+      #ai-interviewer-record-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+      }
+
+      #ai-interviewer-record-btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      #ai-interviewer-recorder:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+      }
+    `;
+    document.head.appendChild(style);
   }
 }

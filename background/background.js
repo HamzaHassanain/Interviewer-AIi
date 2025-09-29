@@ -3,8 +3,12 @@
  * Handles communication between content scripts and AI services
  */
 
-import { textToSpeech, speechToText } from "../shared/ai-service.js";
-import { blobToBase64 } from "../shared/utilities.js";
+import {
+  textToSpeech,
+  speechToText,
+  sendPromptAndHandleHistory,
+} from "./ai-service.js";
+import { blobToBase64 } from "./utilities.js";
 
 /**
  * Main message listener for handling requests from content scripts
@@ -25,6 +29,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       case "speechToText":
         handleSpeechToText(request, sendResponse);
+        return true; // Indicates asynchronous response
+
+      case "userSpeech":
+        handleUserSpeech(request, sendResponse);
+        return true; // Indicates asynchronous response
+
+      case "sendChatMessage":
+        handleChatMessage(request, sendResponse);
         return true; // Indicates asynchronous response
 
       default:
@@ -116,6 +128,66 @@ async function handleSpeechToText(request, sendResponse) {
     sendResponse({
       status: "Error",
       error: error.message || "Speech to text failed",
+    });
+  }
+}
+
+/**
+ * Handles user speech input requests
+ * @param {Object} request - The request object containing user text
+ * @param {Function} sendResponse - Function to send response back
+ */
+async function handleUserSpeech(request, sendResponse) {
+  // Validate user text
+  if (!request.text || typeof request.text !== "string") {
+    sendResponse({
+      status: "Error",
+      error: "User text is required and must be a string",
+    });
+    return;
+  }
+
+  try {
+    const text = await sendPromptAndHandleHistory(request.text);
+    sendResponse({
+      status: "success",
+      text,
+    });
+  } catch (error) {
+    console.error("Error in handleUserSpeech:", error);
+    sendResponse({
+      status: "Error",
+      error: error.message || "User speech processing failed",
+    });
+  }
+}
+
+/**
+ * Handles chat message requests from popup
+ * @param {Object} request - The request object containing chat message
+ * @param {Function} sendResponse - Function to send response back
+ */
+async function handleChatMessage(request, sendResponse) {
+  // Validate message text
+  if (!request.message || typeof request.message !== "string") {
+    sendResponse({
+      success: false,
+      error: "Message text is required and must be a string",
+    });
+    return;
+  }
+
+  try {
+    const text = await sendPromptAndHandleHistory(request.message);
+    sendResponse({
+      success: true,
+      text,
+    });
+  } catch (error) {
+    console.error("Error in handleChatMessage:", error);
+    sendResponse({
+      success: false,
+      error: error.message || "Chat message processing failed",
     });
   }
 }

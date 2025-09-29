@@ -3,6 +3,7 @@ const RecordingState = {
   READY: "ready",
   RECORDING: "recording",
   PROCESSING: "processing",
+  AI_SPEAKING: "ai_speaking",
 };
 
 // Global variables for recording
@@ -17,7 +18,7 @@ let currentState = RecordingState.READY;
  * @returns {Promise<void>} Promise that resolves when audio starts playing
  * @throws {Error} When audio blob is invalid or playback fails
  */
-function playAudioBlob(audioBlob) {
+function playAudioBlob(audioBlob, onEndedCallback = null) {
   if (!audioBlob || !(audioBlob instanceof Blob)) {
     throw new Error("Invalid audio blob provided");
   }
@@ -29,7 +30,6 @@ function playAudioBlob(audioBlob) {
   audio.addEventListener("loadeddata", () => {
     audio.play();
   });
-
   audio.addEventListener("error", (e) => {
     console.error("Audio loading/playback error:", e);
     const errorMsg = audio.error
@@ -37,12 +37,15 @@ function playAudioBlob(audioBlob) {
           audio.error.code
         )}`
       : "Unknown audio error";
-    reject(new Error(errorMsg));
+    throw new Error(errorMsg);
   });
 
   audio.addEventListener("ended", () => {
     // Clean up object URL to free memory
     URL.revokeObjectURL(audioUrl);
+    if (onEndedCallback && typeof onEndedCallback === "function") {
+      onEndedCallback();
+    }
   });
 }
 

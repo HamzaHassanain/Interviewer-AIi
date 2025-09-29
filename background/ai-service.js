@@ -5,10 +5,12 @@
 
 import { GoogleGenAI } from "https://cdn.jsdelivr.net/npm/@google/genai@1.21.0/+esm";
 import { createAudioElementFromBase64, enhanceApiError } from "./utilities.js";
-import { getFromStorage, setInStorage } from "./chorme-storage.js";
+import { getFromStorage, setInStorage } from "../shared/chorme-storage.js";
 // API Configuration
 const TTS_MODEL = "gemini-2.5-flash-preview-tts";
 const STT_MODEL = "gemini-2.5-flash";
+const DEFAULT_VOICE = "Kore"; // Default voice if none selected
+const MODEL = "gemini-2.5-flash"; // Default text model
 
 /**
  * Converts text to speech using Google's Gemini AI Text-to-Speech model
@@ -41,7 +43,7 @@ export async function textToSpeech(text) {
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: (await getFromStorage("voiceName")) || "Kore",
+              voiceName: (await getFromStorage("voiceName")) || DEFAULT_VOICE,
             },
           },
         },
@@ -50,7 +52,7 @@ export async function textToSpeech(text) {
 
     // Validate API response structure
     if (!response || !response.candidates || !response.candidates[0]) {
-      throw new Error("Invalid API response: missing candidates");
+      throw new Error("API did not return any candidates");
     }
 
     const candidate = response.candidates[0];
@@ -59,12 +61,12 @@ export async function textToSpeech(text) {
       !candidate.content.parts ||
       !candidate.content.parts[0]
     ) {
-      throw new Error("Invalid API response: missing content parts");
+      return new Blob();
     }
 
     const part = candidate.content.parts[0];
     if (!part.inlineData || !part.inlineData.data) {
-      throw new Error("Invalid API response: missing audio data");
+      throw new Error("API did not return audio data");
     }
 
     const audioData = part.inlineData.data;
@@ -121,7 +123,7 @@ export async function speechToText(audioBase64, mimeType = "audio/wav") {
 
     // Validate API response structure
     if (!response || !response.candidates || !response.candidates[0]) {
-      throw new Error("Invalid API response: missing candidates");
+      throw new Error("API did not return any candidates");
     }
 
     const candidate = response.candidates[0];
@@ -130,7 +132,7 @@ export async function speechToText(audioBase64, mimeType = "audio/wav") {
       !candidate.content.parts ||
       !candidate.content.parts[0]
     ) {
-      throw new Error("Invalid API response: missing content parts");
+      return "";
     }
 
     const text = candidate.content.parts[0].text;
@@ -143,5 +145,64 @@ export async function speechToText(audioBase64, mimeType = "audio/wav") {
   } catch (error) {
     console.error("Speech-to-text conversion failed:", error);
     throw enhanceApiError(error, "Speech-to-text");
+  }
+}
+
+/**
+ * Handles and displays error messages to the user
+ * @param {string} message - The error message to display
+ */
+
+export async function sendPromptAndHandleHistory(prompt) {
+  if (!prompt || typeof prompt !== "string") {
+    throw new Error("Prompt must be a non-empty string");
+  }
+
+  const history = (await getFromStorage("conversationHistory")) || [];
+  history.push({ role: "user", text: prompt });
+
+  try {
+    const genai = new GoogleGenAI({
+      apiKey: (await getFromStorage("apiKey")) || undefined,
+    });
+
+    const response = await genai.models.generateContent({
+      model: MODEL,
+      contents: history.map((entry) => ({
+        role: entry.role,
+        parts: [{ text: entry.text }],
+      })),
+    });
+
+    // Validate API response structure
+    if (!response || !response.candidates || !response.candidates[0]) {
+      throw new Error("API did not return any candidates");
+    }
+
+    const candidate = response.candidates[0];
+    if (
+      !candidate.content ||
+      !candidate.content.parts ||
+      !candidate.content.parts[0]
+    ) {
+      history.push({ role: "model", text: "" });
+      await setInStorage("conversationHistory", history);
+      return "";
+    }
+
+    const aiText = candidate.content.parts[0].text;
+
+    if (!aiText || typeof aiText !== "string" || aiText.trim().length === 0) {
+      throw new Error("AI response is empty");
+    }
+
+    // Update conversation history
+    history.push({ role: "model", text: aiText.trim() });
+    await setInStorage("conversationHistory", history);
+
+    return aiText.trim();
+  } catch (error) {
+    console.error("Failed to get AI response:", error);
+    throw enhanceApiError(error, "AI response");
   }
 }
