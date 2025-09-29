@@ -1,3 +1,16 @@
+// Recording states
+const RecordingState = {
+  READY: "ready",
+  RECORDING: "recording",
+  PROCESSING: "processing",
+};
+
+// Global variables for recording
+let mediaRecorder = null;
+let recordingButton = null;
+let audioChunks = [];
+let currentState = RecordingState.READY;
+
 /**
  * Plays an audio blob with proper error handling and user feedback
  * @param {Blob} audioBlob - Audio blob to play
@@ -91,4 +104,54 @@ function getAudioErrorMessage(errorCode) {
  */
 function showUserNotification(message, type = "info") {
   // Future enhancement: Show actual browser notification or inject UI element
+}
+
+/**
+ * Converts a Blob to base64 string
+ */
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64data = reader.result.split(",")[1];
+      resolve(base64data);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Storage utility functions
+ */
+function getFromStorage(key) {
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.storage.sync.get([key], (result) => {
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message));
+        }
+        resolve(result[key]);
+      });
+    } catch (error) {
+      reject(new Error("Failed to access chrome.storage: " + error.message));
+    }
+  });
+}
+
+function setInStorage(key, value) {
+  return new Promise((resolve, reject) => {
+    try {
+      const item = {};
+      item[key] = value;
+      chrome.storage.sync.set(item, () => {
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message));
+        }
+        resolve();
+      });
+    } catch (error) {
+      reject(new Error("Failed to access chrome.storage: " + error.message));
+    }
+  });
 }

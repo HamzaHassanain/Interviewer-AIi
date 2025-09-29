@@ -21,8 +21,8 @@
     {
       "matches": ["https://leetcode.com/problems/*"],
       "js": [
-        "shared/chorme-storage.js",
         "content/utils.js",
+        "content/ui-controller.js",
         "content/content.js"
       ],
       "run_at": "document_end"

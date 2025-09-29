@@ -234,6 +234,12 @@ main {
   box-shadow: 0 0 8px rgba(52, 168, 83, 0.3);
 }
 
+.status-indicator.active {
+  background: var(--gemini-blue);
+  animation: pulse-active 1s infinite;
+  box-shadow: 0 0 12px rgba(66, 133, 244, 0.5);
+}
+
 @keyframes pulse {
   0% {
     opacity: 1;
@@ -242,6 +248,21 @@ main {
     opacity: 0.5;
   }
   100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-active {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
     opacity: 1;
   }
 }

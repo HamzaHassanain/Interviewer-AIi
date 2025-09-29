@@ -1,60 +1,8 @@
 /**
  * AI Interviewer Extension - Content Script
- * Handles text-to-speech functionality on supported web pages
+ * Handles interview functionality with voice recording and transcription
  */
 
-/**
- * Main function that initializes the content script and demonstrates TTS functionality
- * Tests the text-to-speech feature with a sample message
- */
-// async function main() {
-//   try {
-//     const response = await chrome.runtime.sendMessage({
-//       action: "textToSpeech",
-//       text: "Hello, this is a test of the text to speech functionality.",
-//     });
-
-//     // Comprehensive error handling for different response types
-//     if (!response) {
-//       throw new Error("No response received from background script");
-//     }
-
-//     if (response.status === "Error") {
-//       console.error("Background script error:", response.error);
-//       return;
-//     }
-
-//     if (response.status !== "success") {
-//       throw new Error("Unexpected response status: " + response.status);
-//     }
-
-//     if (!response.audioData) {
-//       throw new Error("No audio data received in response");
-//     }
-
-//     // Convert base64 audio data back to blob for playback
-//     const audioBlob = base64ToBlob(
-//       response.audioData,
-//       response.mimeType || "audio/wav"
-//     );
-
-//     // Create audio element and set up playback
-//     playAudioBlob(audioBlob);
-//   } catch (error) {
-//     console.error("Content script error:", error);
-
-//     // Report error to background script for logging
-//     try {
-//       chrome.runtime.sendMessage({
-//         action: "logError",
-//         error: error.message,
-//         context: "content script main function",
-//       });
-//     } catch (reportError) {
-//       console.error("Failed to report error to background:", reportError);
-//     }
-//   }
-// }
 
 initializeContentScript();
 
@@ -62,20 +10,64 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case "interviewStart":
       startInterview();
+      sendResponse({ status: "success" });
       break;
     case "interviewStop":
       stopInterview();
+      sendResponse({ status: "success" });
       break;
   }
 });
 
 async function initializeContentScript() {
-  const isInterviewActive =
-    (await getFromStorage("isInterviewActive")) || false;
-  if (isInterviewActive) {
-    startInterview();
+  try {
+    const isInterviewActive =
+      (await getFromStorage("isInterviewActive")) || false;
+    if (isInterviewActive) {
+      startInterview();
+    }
+  } catch (error) {
+    console.error("Failed to initialize content script:", error);
   }
 }
 
-function startInterview() {}
-function stopInterview() {}
+/**
+ * Starts the interview session by creating the recording interface
+ */
+async function startInterview() {
+  try {
+    // Store interview state
+    await setInStorage("isInterviewActive", true);
+
+    // Create the recording button UI
+    createRecordingButton();
+
+    // Request microphone permissions
+    await requestMicrophonePermission();
+  } catch (error) {
+    console.error("Failed to start interview:", error);
+    showError("Failed to start interview: " + error.message);
+  }
+}
+
+/**
+ * Stops the interview session and cleans up
+ */
+async function stopInterview() {
+  try {
+    // Store interview state
+    await setInStorage("isInterviewActive", false);
+
+    // Stop any ongoing recording
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+    }
+
+    // Remove the recording button
+    removeRecordingButton();
+  } catch (error) {
+    console.error("Failed to stop interview:", error);
+  }
+}
+
+
