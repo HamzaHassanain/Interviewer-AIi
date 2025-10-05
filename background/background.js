@@ -8,7 +8,6 @@ import {
   speechToText,
   sendPromptAndHandleHistory,
 } from "./ai-service.js";
-import { blobToBase64 } from "./utilities.js";
 
 /**
  * Main message listener for handling requests from content scripts
@@ -18,31 +17,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
     // Validate request structure
     if (!request || !request.action) {
-      sendResponse({ status: "Error", error: "Invalid request format" });
+      sendResponse({ success: false, error: "Invalid request format" });
       return false;
     }
 
     switch (request.action) {
       case "textToSpeech":
         handleTextToSpeech(request, sendResponse);
-        return true; // Indicates asynchronous response
+        return true;
 
       case "speechToText":
         handleSpeechToText(request, sendResponse);
-        return true; // Indicates asynchronous response
-
-      case "userSpeech":
-        handleUserSpeech(request, sendResponse);
-        return true; // Indicates asynchronous response
+        return true;
 
       case "sendChatMessage":
         handleChatMessage(request, sendResponse);
-        return true; // Indicates asynchronous response
+        return true;
 
       default:
         console.warn("Unknown action requested:", request.action);
         sendResponse({
-          status: "Error",
+          success: false,
           error: `Unknown action: ${request.action}. Supported actions: textToSpeech, speechToText`,
         });
         return false;
@@ -50,7 +45,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } catch (error) {
     console.error("Unexpected error in message listener:", error);
     sendResponse({
-      status: "Error",
+      success: false,
       error: "Internal error: " + error.message,
     });
     return false;
@@ -63,34 +58,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * @param {Function} sendResponse - Function to send response back
  */
 async function handleTextToSpeech(request, sendResponse) {
-  // Validate text parameter
   if (!request.text || typeof request.text !== "string") {
     sendResponse({
-      status: "Error",
+      success: false,
       error: "Text parameter is required and must be a string",
     });
     return;
   }
 
   try {
-    const audioBlob = await textToSpeech(request.text);
+    const audioData = await textToSpeech(request.text);
 
-    if (!audioBlob) {
-      throw new Error("Failed to generate audio blob");
-    }
-
-    // Convert blob to base64 for cross-context messaging
-    const audioBase64 = await blobToBase64(audioBlob);
     sendResponse({
-      status: "success",
-      audioData: audioBase64,
-      mimeType: audioBlob.type || "audio/wav",
+      success: true,
+      audioData,
       message: "Text to speech conversion completed successfully",
     });
   } catch (error) {
     console.error("Error in textToSpeech:", error);
     sendResponse({
-      status: "Error",
+      success: false,
       error: error.message || "Text to speech failed",
     });
   }
@@ -105,7 +92,7 @@ async function handleSpeechToText(request, sendResponse) {
   // Validate audio parameters
   if (!request.audioBlob) {
     sendResponse({
-      status: "Error",
+      success: false,
       error: "Audio blob parameter is required",
     });
     return;
@@ -119,45 +106,15 @@ async function handleSpeechToText(request, sendResponse) {
     }
 
     sendResponse({
-      status: "success",
+      success: true,
       text: text,
       message: "Speech to text conversion completed successfully",
     });
   } catch (error) {
     console.error("Error in speechToText:", error);
     sendResponse({
-      status: "Error",
+      success: false,
       error: error.message || "Speech to text failed",
-    });
-  }
-}
-
-/**
- * Handles user speech input requests
- * @param {Object} request - The request object containing user text
- * @param {Function} sendResponse - Function to send response back
- */
-async function handleUserSpeech(request, sendResponse) {
-  // Validate user text
-  if (!request.text || typeof request.text !== "string") {
-    sendResponse({
-      status: "Error",
-      error: "User text is required and must be a string",
-    });
-    return;
-  }
-
-  try {
-    const text = await sendPromptAndHandleHistory(request.text);
-    sendResponse({
-      status: "success",
-      text,
-    });
-  } catch (error) {
-    console.error("Error in handleUserSpeech:", error);
-    sendResponse({
-      status: "Error",
-      error: error.message || "User speech processing failed",
     });
   }
 }
@@ -168,15 +125,6 @@ async function handleUserSpeech(request, sendResponse) {
  * @param {Function} sendResponse - Function to send response back
  */
 async function handleChatMessage(request, sendResponse) {
-  // Validate message text
-  if (!request.message || typeof request.message !== "string") {
-    sendResponse({
-      success: false,
-      error: "Message text is required and must be a string",
-    });
-    return;
-  }
-
   try {
     const text = await sendPromptAndHandleHistory(request.message);
     sendResponse({

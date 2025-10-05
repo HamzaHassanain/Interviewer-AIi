@@ -215,7 +215,7 @@ function showTranscribedText(text, speaker = "user") {
   document.body.appendChild(notification);
 
   // Auto-remove after appropriate time (longer for AI responses)
-  const autoRemoveTime = isAI ? 15000 : 10000;
+  const autoRemoveTime = isAI ? 35000 : 15000;
   setTimeout(() => {
     if (notification.parentElement) {
       notification.style.animation = "slideOut 0.3s ease-in forwards";

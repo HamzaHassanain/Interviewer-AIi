@@ -22,6 +22,7 @@
       "matches": ["https://leetcode.com/problems/*"],
       "js": [
         "content/utils.js",
+        "content/leetcode-handler.js",
         "content/interviewer.js",
         "content/recording-manager.js",
         "content/ui-controller.js",

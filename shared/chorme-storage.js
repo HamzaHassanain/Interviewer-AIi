@@ -1,7 +1,7 @@
 function getFromStorage(key) {
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.sync.get([key], (result) => {
+      chrome.storage.local.get([key], (result) => {
         if (chrome.runtime.lastError) {
           return reject(new Error(chrome.runtime.lastError.message));
         }
@@ -18,7 +18,7 @@ function setInStorage(key, value) {
     try {
       const item = {};
       item[key] = value;
-      chrome.storage.sync.set(item, () => {
+      chrome.storage.local.set(item, () => {
         if (chrome.runtime.lastError) {
           return reject(new Error(chrome.runtime.lastError.message));
         }

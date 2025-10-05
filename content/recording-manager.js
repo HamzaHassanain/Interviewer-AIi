@@ -65,7 +65,6 @@ async function startRecording() {
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         audioChunks.push(event.data);
-        console.log(`Audio chunk received: ${event.data.size} bytes`);
       }
     };
 
@@ -73,7 +72,6 @@ async function startRecording() {
     mediaRecorder.onstop = async () => {
       // Clean up media stream
       stream.getTracks().forEach((track) => track.stop());
-      console.log("Recording stopped, processing audio...");
 
       // Process the recorded audio
       await processRecordedAudio();
@@ -88,7 +86,6 @@ async function startRecording() {
 
     // Start recording with data collection interval
     mediaRecorder.start(1000); // Collect data every 1 second
-    console.log("Recording started successfully");
   } catch (error) {
     console.error("Failed to start recording:", error);
     showError("Failed to start recording: " + error.message);
@@ -109,7 +106,6 @@ async function stopRecording() {
 
       // Stop the recording
       mediaRecorder.stop();
-      console.log("Recording stop requested");
     } else {
       console.warn("No active recording to stop");
     }
@@ -141,13 +137,8 @@ async function processRecordedAudio() {
       throw new Error("Recorded audio is empty");
     }
 
-    console.log(
-      `Processing audio blob: ${audioBlob.size} bytes, type: ${audioBlob.type}`
-    );
-
     // Convert to base64 for transmission
     const audioBase64 = await blobToBase64(audioBlob);
-    console.log("Audio converted to base64, sending for transcription...");
 
     // Send to background script for AI transcription
     const transcriptionResponse = await chrome.runtime.sendMessage({
@@ -156,25 +147,13 @@ async function processRecordedAudio() {
       mimeType: audioBlob.type,
     });
 
-    // Validate transcription response
-    if (!transcriptionResponse) {
-      throw new Error("No response received from background script");
-    }
-
-    if (transcriptionResponse.status === "Error") {
+    if (!transcriptionResponse.success) {
       throw new Error(transcriptionResponse.error);
-    }
-
-    if (
-      transcriptionResponse.status !== "success" ||
-      !transcriptionResponse.text
-    ) {
-      throw new Error("Invalid transcription response from AI service");
     }
 
     const userText = transcriptionResponse.text.trim();
 
-    await handleUserSpeech(userText);
+    await handleUserInteraction(userText);
   } catch (error) {
     console.error("Failed to process recorded audio:", error);
     showError("Failed to process recording: " + error.message);
@@ -206,8 +185,6 @@ function resetToReadyState() {
     }
     mediaRecorder = null;
   }
-
-  console.log("Recording system reset to ready state");
 }
 
 /**

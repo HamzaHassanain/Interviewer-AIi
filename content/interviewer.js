@@ -9,30 +9,75 @@
  */
 
 /**
+ * Starts the interview session by creating the recording interface
+ * @returns {Promise<void>}
+ */
+async function startInterview(firstTime = false) {
+  try {
+    createRecordingButton();
+
+    updateButtonState(RecordingState.PROCESSING);
+
+    destroyAllLeetcodeWidgetsExceptCode();
+
+    if (firstTime) {
+      await clearConversationHistory();
+      await firstInterviewPrompt();
+    }
+
+    await setInStorage("isInterviewActive", true);
+
+    await requestMicrophonePermission();
+
+    showSuccess(
+      "AI Interviewer is ready! Click the recording button to start."
+    );
+
+    resetToReadyState();
+  } catch (error) {
+    console.error("Failed to start interview:", error);
+    showError("Failed to start interview: " + error.message);
+
+    // Clean up on error
+    await setInStorage("isInterviewActive", false);
+  }
+}
+
+/**
+ * Stops the interview session and cleans up all resources
+ * @returns {Promise<void>}
+ */
+async function stopInterview() {
+  try {
+    // Store interview state
+    await setInStorage("isInterviewActive", false);
+
+    // Remove the recording button UI
+    removeRecordingButton();
+
+    showSuccess("Interview session ended.");
+  } catch (error) {
+    console.error("Failed to stop interview:", error);
+    showError("Failed to stop interview: " + error.message);
+  }
+}
+
+/**
  * Handles user speech input and coordinates AI response
  * This function is called from recording-manager.js after transcription
  * @param {string} userText - The transcribed user speech
  * @returns {Promise<string>} The AI response text
  */
-async function handleUserSpeech(userText) {
+async function handleUserInteraction(userText) {
   try {
     // Send to background script for AI processing
     const response = await chrome.runtime.sendMessage({
-      action: "userSpeech",
-      text: userText,
+      action: "sendChatMessage",
+      message: userText,
     });
 
-    // Validate response
-    if (!response) {
-      throw new Error("No response received from background script");
-    }
-
-    if (response.status === "Error") {
+    if (!response.success) {
       throw new Error(response.error);
-    }
-
-    if (response.status !== "success" || !response.text) {
-      throw new Error("Invalid response from AI service");
     }
 
     const aiResponse = response.text.trim();
@@ -87,7 +132,6 @@ async function clearConversationHistory() {
       sessionStartTime: new Date().toISOString(),
       lastActivity: new Date().toISOString(),
     });
-    console.log("Conversation history cleared");
   } catch (error) {
     console.error("Failed to clear conversation history:", error);
   }
@@ -110,30 +154,60 @@ async function playAIResponse(aiText) {
       text: aiText,
     });
 
-    if (!ttsResponse) {
-      throw new Error("No response received from text-to-speech service");
-    }
-
-    if (ttsResponse.status === "Error") {
+    if (!ttsResponse.success) {
       throw new Error(ttsResponse.error);
     }
 
-    if (ttsResponse.status !== "success" || !ttsResponse.audioData) {
-      throw new Error("Invalid response from text-to-speech service");
+    if (!ttsResponse.audioData) {
+      throw new Error(
+        "Invalid response from text-to-speech service, audioData missing"
+      );
     }
 
-    // Convert base64 audio back to blob and play it
-    const audioBase64 = ttsResponse.audioData;
-    const audioBlob = base64ToBlob(audioBase64, "audio/wav");
-
-    const callback = () => {
-      updateButtonState(RecordingState.READY);
-    };
-    await playAudioBlob(audioBlob, callback);
-
-    console.log("AI speech completed");
+    const pcmData = Uint8Array.from(atob(ttsResponse.audioData), (c) =>
+      c.charCodeAt(0)
+    );
+    createAndPlayWAVBuffer(
+      pcmData,
+      (err) => {
+        if (err) {
+          console.error("Error playing audio:", err);
+          showError("Error playing AI response audio: " + err.message);
+        }
+        resetToReadyState();
+      },
+      () => {
+        resetToReadyState();
+      }
+    );
   } catch (error) {
     console.error("Failed to play AI response:", error);
     showError("Failed to play AI response: " + error.message);
+  }
+}
+
+async function firstInterviewPrompt() {
+  try {
+    const message = `
+        You are an expert coding interviewer.
+        I want you to act as an interviewer for coding interviews.
+        I will be the candidate, the interview will be about this problem: ${getLeetcodeProblemTitleAndLink()}.
+        I want you to ask me one question at a time, wait for my answer, then give me feedback and ask the next question.
+        The questions should be relevant to the problem and test my understanding of algorithms, data structures, and problem-solving skills.
+        Start by introducing the problem as I do not know what it is about.
+
+        NOTE, DO NOTE START INTRODUCE THE PROBLEM YET, the interviewee will ask you to introduce the problem, to start the interview
+      `;
+    const response = await chrome.runtime.sendMessage({
+      action: "sendChatMessage",
+      message,
+    });
+
+    if (!response.success) {
+      throw new Error(response.message);
+    }
+  } catch (error) {
+    showError("Failed to send first prompt: " + error.message);
+    console.error("Failed to send first prompt:", error);
   }
 }

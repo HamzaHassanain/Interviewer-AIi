@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenAI } from "https://cdn.jsdelivr.net/npm/@google/genai@1.21.0/+esm";
-import { createAudioElementFromBase64, enhanceApiError } from "./utilities.js";
+import { enhanceApiError } from "./utilities.js";
 import { getFromStorage, setInStorage } from "../shared/chorme-storage.js";
 // API Configuration
 const TTS_MODEL = "gemini-2.5-flash-preview-tts";
@@ -54,32 +54,15 @@ export async function textToSpeech(text) {
     if (!response || !response.candidates || !response.candidates[0]) {
       throw new Error("API did not return any candidates");
     }
-
     const candidate = response.candidates[0];
-    if (
-      !candidate.content ||
-      !candidate.content.parts ||
-      !candidate.content.parts[0]
-    ) {
-      return new Blob();
-    }
-
     const part = candidate.content.parts[0];
     if (!part.inlineData || !part.inlineData.data) {
       throw new Error("API did not return audio data");
     }
 
     const audioData = part.inlineData.data;
-    const mimeType = part.inlineData.mimeType || "audio/wav";
 
-    // Create proper WAV blob from the base64 audio data
-    const audioBlob = createAudioElementFromBase64(audioData, mimeType);
-
-    if (!audioBlob) {
-      throw new Error("Failed to create audio blob from received data");
-    }
-
-    return audioBlob;
+    return audioData;
   } catch (error) {
     console.error("Text-to-speech conversion failed:", error);
     throw enhanceApiError(error, "Text-to-speech");
@@ -154,11 +137,11 @@ export async function speechToText(audioBase64, mimeType = "audio/wav") {
  */
 
 export async function sendPromptAndHandleHistory(prompt) {
-  if (!prompt || typeof prompt !== "string") {
-    throw new Error("Prompt must be a non-empty string");
+  let history = await getFromStorage("conversationHistory");
+  if (!Array.isArray(history)) {
+    history = [];
   }
 
-  const history = (await getFromStorage("conversationHistory")) || [];
   history.push({ role: "user", text: prompt });
 
   try {
@@ -174,30 +157,13 @@ export async function sendPromptAndHandleHistory(prompt) {
       })),
     });
 
-    // Validate API response structure
-    if (!response || !response.candidates || !response.candidates[0]) {
-      throw new Error("API did not return any candidates");
-    }
-
     const candidate = response.candidates[0];
-    if (
-      !candidate.content ||
-      !candidate.content.parts ||
-      !candidate.content.parts[0]
-    ) {
-      history.push({ role: "model", text: "" });
-      await setInStorage("conversationHistory", history);
-      return "";
-    }
 
     const aiText = candidate.content.parts[0].text;
 
-    if (!aiText || typeof aiText !== "string" || aiText.trim().length === 0) {
-      throw new Error("AI response is empty");
-    }
-
     // Update conversation history
     history.push({ role: "model", text: aiText.trim() });
+
     await setInStorage("conversationHistory", history);
 
     return aiText.trim();

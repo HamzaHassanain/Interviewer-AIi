@@ -13,103 +13,6 @@ let audioChunks = [];
 let currentState = RecordingState.READY;
 
 /**
- * Plays an audio blob with proper error handling and user feedback
- * @param {Blob} audioBlob - Audio blob to play
- * @returns {Promise<void>} Promise that resolves when audio starts playing
- * @throws {Error} When audio blob is invalid or playback fails
- */
-function playAudioBlob(audioBlob, onEndedCallback = null) {
-  if (!audioBlob || !(audioBlob instanceof Blob)) {
-    throw new Error("Invalid audio blob provided");
-  }
-
-  const audioUrl = URL.createObjectURL(audioBlob);
-  const audio = new Audio(audioUrl);
-
-  // Set up event listeners for audio playback
-  audio.addEventListener("loadeddata", () => {
-    audio.play();
-  });
-  audio.addEventListener("error", (e) => {
-    console.error("Audio loading/playback error:", e);
-    const errorMsg = audio.error
-      ? `Audio error (code ${audio.error.code}): ${getAudioErrorMessage(
-          audio.error.code
-        )}`
-      : "Unknown audio error";
-    throw new Error(errorMsg);
-  });
-
-  audio.addEventListener("ended", () => {
-    // Clean up object URL to free memory
-    URL.revokeObjectURL(audioUrl);
-    if (onEndedCallback && typeof onEndedCallback === "function") {
-      onEndedCallback();
-    }
-  });
-}
-
-/**
- * Helper function to convert base64 string to Blob
- * @param {string} base64 - Base64 encoded data (without data URL prefix)
- * @param {string} mimeType - MIME type for the blob (e.g., "audio/wav")
- * @returns {Blob} Blob object created from base64 data
- * @throws {Error} When base64 data is invalid or conversion fails
- */
-function base64ToBlob(base64, mimeType) {
-  if (!base64 || typeof base64 !== "string") {
-    throw new Error("Base64 data must be a non-empty string");
-  }
-
-  if (!mimeType || typeof mimeType !== "string") {
-    throw new Error("MIME type must be specified");
-  }
-
-  try {
-    // Decode base64 to binary string
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-
-    // Convert binary string to byte array
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: mimeType });
-
-    return blob;
-  } catch (error) {
-    throw new Error("Failed to convert base64 to blob: " + error.message);
-  }
-}
-
-/**
- * Gets a human-readable error message for HTML5 audio error codes
- * @param {number} errorCode - Audio error code
- * @returns {string} Human-readable error message
- */
-function getAudioErrorMessage(errorCode) {
-  const errorMessages = {
-    1: "MEDIA_ERR_ABORTED - Audio playback was aborted",
-    2: "MEDIA_ERR_NETWORK - Network error while loading audio",
-    3: "MEDIA_ERR_DECODE - Audio decoding failed",
-    4: "MEDIA_ERR_SRC_NOT_SUPPORTED - Audio format not supported",
-  };
-
-  return errorMessages[errorCode] || `Unknown error code: ${errorCode}`;
-}
-
-/**
- * Shows a user notification (can be extended to show actual UI notifications)
- * @param {string} message - Message to show
- * @param {string} type - Notification type: "success", "error", "info"
- */
-function showUserNotification(message, type = "info") {
-  // Future enhancement: Show actual browser notification or inject UI element
-}
-
-/**
  * Converts a Blob to base64 string
  */
 function blobToBase64(blob) {
@@ -124,13 +27,80 @@ function blobToBase64(blob) {
   });
 }
 
+function createAndPlayWAVBuffer(pcmData, onErrorCallback, onEndedCallback) {
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+  const sampleRate = 24000;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const dataLen = pcmData.byteLength;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const byteRate = sampleRate * blockAlign;
+  // Write WAV header
+  /* It’s best to use a WAV header generator, but here's a quick manual setup */
+
+  /* RIFF identifier */
+  writeString(view, 0, "RIFF");
+  /* file length */
+  view.setUint32(4, 36 + dataLen, true);
+  /* RIFF type */
+  writeString(view, 8, "WAVE");
+  /* format chunk identifier */
+  writeString(view, 12, "fmt ");
+  /* format chunk length */
+  view.setUint32(16, 16, true);
+  /* sample format (raw) */
+  view.setUint16(20, 1, true);
+  /* channel count */
+  view.setUint16(22, numChannels, true);
+  /* sample rate */
+  view.setUint32(24, sampleRate, true);
+  /* byte rate (sample rate * block align) */
+  view.setUint32(28, byteRate, true);
+  /* block align (channel count * bytes per sample) */
+  view.setUint16(32, blockAlign, true);
+  /* bits per sample */
+  view.setUint16(34, bitsPerSample, true);
+  /* data chunk identifier */
+  writeString(view, 36, "data");
+  /* data chunk length */
+  view.setUint32(40, dataLen, true);
+
+  function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  // Combine the header and PCM data into a single Blob
+  const wavBlob = new Blob([header, pcmData], { type: "audio/wav" });
+
+  // Create an object URL from the Blob
+  const audioUrl = URL.createObjectURL(wavBlob);
+
+  // Create an audio element and play it
+  const audio = new Audio(audioUrl);
+  audio
+    .play()
+    .then(() => {})
+    .catch((error) => {
+      onErrorCallback && onErrorCallback(error);
+    });
+
+  audio.addEventListener("ended", () => {
+    // Playback ended
+    onEndedCallback && onEndedCallback();
+    onEndedCallback();
+  });
+}
+
 /**
  * Storage utility functions
  */
 function getFromStorage(key) {
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.sync.get([key], (result) => {
+      chrome.storage.local.get([key], (result) => {
         if (chrome.runtime.lastError) {
           return reject(new Error(chrome.runtime.lastError.message));
         }
@@ -147,7 +117,7 @@ function setInStorage(key, value) {
     try {
       const item = {};
       item[key] = value;
-      chrome.storage.sync.set(item, () => {
+      chrome.storage.local.set(item, () => {
         if (chrome.runtime.lastError) {
           return reject(new Error(chrome.runtime.lastError.message));
         }

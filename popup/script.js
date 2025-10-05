@@ -126,7 +126,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const history = (await getFromStorage("conversationHistory")) || [];
       chatHistory.innerHTML = "";
-
       if (history.length === 0) {
         chatHistory.innerHTML = `
           <div class="chat-message system">
@@ -241,17 +240,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     chatHistory.appendChild(messageDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
-
-    // Update conversation history in storage if requested
-    if (updateStorage && role !== "system") {
-      try {
-        const history = (await getFromStorage("conversationHistory")) || [];
-        history.push({ role, text });
-        await setInStorage("conversationHistory", history);
-      } catch (error) {
-        console.error("Failed to update conversation history:", error);
-      }
-    }
   }
 
   /**
